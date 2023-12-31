@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:get/get.dart';
 import 'package:viacep_flutter/model/back4app_model.dart';
 import 'package:viacep_flutter/model/via_cep_model.dart';
 import 'package:viacep_flutter/repositories/via_cep/via_cep_repository.dart';
 import 'repositories/back4app/back4app_repository.dart';
 
 Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
   runApp(const MyApp());
 }
@@ -16,7 +16,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GetMaterialApp(
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Consulta de CEP',
       theme: ThemeData(
@@ -55,17 +55,12 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> buscarDados() async {
-    setState(() {
-      habilitarMensagemAguarde = true;
-      habilitarBotaoConsulta = false;
-    });
-    await backRepo.obterTodos();
+    atualizarTela(true, false);
     var consultaDadosExistentes = await backRepo.obterTodos();
     setState(() {
       retornoBack4App = consultaDadosExistentes;
-      habilitarMensagemAguarde = false;
-      habilitarBotaoConsulta = false;
     });
+    atualizarTela(false, false);
   }
 
   @override
@@ -95,18 +90,14 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
                 onChanged: (value) {
                   if (cepCtrl.text.trim().length == 8) {
-                    setState(() {
-                      habilitarBotaoConsulta = true;
-                    });
+                    atualizarTela(false, true);
                   } else {
-                    setState(() {
-                      habilitarBotaoConsulta = false;
-                    });
+                    atualizarTela(false, false);
                   }
                 },
                 onEditingComplete: () {
                   if (cepCtrl.text.trim().length < 8 || cepCtrl.text.trim().length > 8) {
-                    mensagemInfo();
+                    atualizarTela(false, false);
                   }
                 },
               ),
@@ -122,17 +113,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
                 onPressed: habilitarBotaoConsulta
                     ? () async {
-                        setState(() {
-                          habilitarMensagemAguarde = true;
-                          habilitarBotaoConsulta = false;
-                        });
-                        bool cepJaExisteNaBase = retornoBack4App.results.where((c) => c.cep == cepCtrl.text).isNotEmpty;
-                        consultaViaCep = await repo.consultarCep(cepCtrl.text, cepJaExisteNaBase);
-                        retornoBack4App = await backRepo.obterTodos();
-                        setState(() {
-                          habilitarMensagemAguarde = false;
-                          habilitarBotaoConsulta = true;
-                        });
+                        await pesquisarCep();
                       }
                     : null,
                 child: const Text("CONSULTAR"),
@@ -168,7 +149,7 @@ class _MyHomePageState extends State<MyHomePage> {
               const SizedBox(
                 height: 15,
               ),
-              const Text('CEP Cadastrados'),
+              Text('Total de CEP Cadastrados ${retornoBack4App.results.length}'),
               const SizedBox(
                 height: 15,
               ),
@@ -204,12 +185,25 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  void mensagemInfo() {
-    Get.snackbar(
-      'Atenção',
-      mensagemAlerta,
-      snackPosition: SnackPosition.BOTTOM,
-      duration: const Duration(seconds: 8),
-    );
+  Future<void> pesquisarCep() async {
+    atualizarTela(true, false);
+    consultaViaCep = await repo.consultarCep(cepCtrl.text, cepJaExiste());
+    await recarregarLista();
+    atualizarTela(false, true);
+  }
+
+  Future<void> recarregarLista() async {
+    retornoBack4App = await backRepo.obterTodos();
+  }
+
+  bool cepJaExiste() {
+    return retornoBack4App.results.where((c) => c.cep == cepCtrl.text).isEmpty;
+  }
+
+  void atualizarTela(bool mensagemAguarde, bool botaoConsulta) {
+    setState(() {
+      habilitarMensagemAguarde = mensagemAguarde;
+      habilitarBotaoConsulta = botaoConsulta;
+    });
   }
 }
