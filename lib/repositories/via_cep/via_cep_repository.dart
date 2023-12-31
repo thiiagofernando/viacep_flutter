@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:viacep_flutter/model/via_cep_model.dart';
 import 'package:viacep_flutter/repositories/via_cep/via_cep_dio.dart';
 
